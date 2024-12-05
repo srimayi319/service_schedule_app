@@ -1,8 +1,62 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'homepage.dart';
+import '/screens/homepage.dart';
+import '/auth/auth_service.dart';
+import 'loginscreen.dart';
 
-class SignUpPage extends StatelessWidget {
-  const SignUpPage({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
+
+  @override
+  State<SignupScreen> createState() => _SignupScreenState();
+}
+
+class _SignupScreenState extends State<SignupScreen> {
+  final _auth = AuthService();
+
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _confirmPassword = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+    _confirmPassword.dispose();
+    super.dispose();
+  }
+
+  goToLogin(BuildContext context) => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+
+  goToHome(BuildContext context) => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+
+  _signup() async {
+    if (_password.text != _confirmPassword.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match")),
+      );
+      return;
+    }
+
+    final user = await _auth.createUserWithEmailAndPassword(
+        _email.text.trim(), _password.text.trim());
+    if (user != null) {
+      log("User Created Successfully");
+      goToHome(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Signup failed")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +85,9 @@ class SignUpPage extends StatelessWidget {
               ),
               const SizedBox(height: 25),
               // Username input field
-              const TextField(
-                decoration: InputDecoration(
+              TextField(
+                controller: _name,
+                decoration: const InputDecoration(
                   labelText: "Username",
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
@@ -40,8 +95,9 @@ class SignUpPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               // Email input field
-              const TextField(
-                decoration: InputDecoration(
+              TextField(
+                controller: _email,
+                decoration: const InputDecoration(
                   labelText: "Email",
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.email),
@@ -49,9 +105,10 @@ class SignUpPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               // Password input field
-              const TextField(
+              TextField(
+                controller: _password,
                 obscureText: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: "Password",
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock),
@@ -59,9 +116,10 @@ class SignUpPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               // Confirm password input field
-              const TextField(
+              TextField(
+                controller: _confirmPassword,
                 obscureText: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: "Confirm Password",
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock_outline),
@@ -70,12 +128,7 @@ class SignUpPage extends StatelessWidget {
               const SizedBox(height: 25),
               // Sign up button
               ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomePage()),
-                  );
-                },
+                onPressed: _signup,
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       Theme.of(context).colorScheme.primary, // Background color
@@ -86,9 +139,7 @@ class SignUpPage extends StatelessWidget {
               const SizedBox(height: 16),
               // Link to Login page
               TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: () => goToLogin(context),
                 child: const Text("Already have an account? Login"),
               ),
             ],

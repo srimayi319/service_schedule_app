@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date and time formatting
 
 class ServicePage extends StatefulWidget {
+  const ServicePage({super.key});
+
   @override
   _ServicePageState createState() => _ServicePageState();
 }
@@ -18,10 +20,11 @@ class _ServicePageState extends State<ServicePage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked != selectedDate)
+    if (picked != null && picked != selectedDate) {
       setState(() {
         selectedDate = picked;
       });
+    }
   }
 
   @override

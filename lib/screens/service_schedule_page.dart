@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 class ScheduleServicePage extends StatefulWidget {
   final String serviceName;
 
-  const ScheduleServicePage({Key? key, required this.serviceName})
-      : super(key: key);
+  const ScheduleServicePage({super.key, required this.serviceName});
 
   @override
   _ScheduleServicePageState createState() => _ScheduleServicePageState();
