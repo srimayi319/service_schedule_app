@@ -35,7 +35,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   goToHome(BuildContext context) => Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
+        MaterialPageRoute(builder: (context) => HomePage()),
       );
 
   _signup() async {

@@ -1,7 +1,183 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class HomePage extends StatefulWidget {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+   HomePage({super.key});
+
+
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool hasNewNotifications = false;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenForScheduledServices();
+  }
+
+  // Listen for changes in scheduled services for the current user
+  void _listenForScheduledServices() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _firestore
+          .collection('service_schedules')
+          .where('userId', isEqualTo: user.uid) // Filter by user ID
+          .snapshots()
+          .listen((snapshot) {
+        final scheduledServices = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return {
+            'id': doc.id,
+            'date': data['date'] as Timestamp,
+            'serviceName': data['serviceName'] as String,
+          };
+        }).toList();
+
+        final tomorrow = DateTime.now().add(const Duration(days: 1));
+        final notifications = scheduledServices.where((service) {
+          final serviceDate = (service['date'] as Timestamp).toDate();
+          return DateFormat('yyyy-MM-dd').format(serviceDate) ==
+              DateFormat('yyyy-MM-dd').format(tomorrow);
+        }).toList();
+
+        setState(() {
+          hasNewNotifications = notifications.isNotEmpty;
+        });
+      });
+    }
+  }
+
+  // Show notification for upcoming scheduled services
+  Future<void> _checkForNotifications(BuildContext context) async {
+    try {
+      // Fetch scheduled services from Firestore
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('service_schedules')
+          .where('date',
+          isGreaterThanOrEqualTo: DateTime.now().toIso8601String())
+          .orderBy('date')
+          .get();
+
+      // Extract data from the fetched services
+      final List<Map<String, dynamic>> notifications = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'date': DateTime.parse(data['date']),
+          'serviceName': data['serviceName'],
+        };
+      }).toList();
+
+      if (notifications.isNotEmpty) {
+        // Show notification dialog with the fetched services
+        _showNotificationDialog(context, notifications);
+      } else {
+        // Show no upcoming services message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No upcoming scheduled services.')),
+        );
+      }
+    } catch (e) {
+      // Handle errors (e.g., Firestore access issues)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error checking notifications: $e')),
+      );
+    }
+  }
+
+  // Function to show notification dialog with option to cancel the service
+  void _showNotificationDialog(
+      BuildContext context, List<Map<String, dynamic>> notifications) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Upcoming Scheduled Service'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var notification in notifications)
+                ListTile(
+                  title: Text('Service: ${notification['serviceName']}'),
+                  subtitle: Text('Scheduled on: ${DateFormat('yyyy-MM-dd').format(notification['date'])}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.cancel, color: Colors.red),
+                    onPressed: () {
+                      _cancelService(notification['id']);
+                      Navigator.of(context).pop(); // Close the dialog
+                    },
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Function to cancel the scheduled service
+  Future<void> _cancelService(String serviceId) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Delete the scheduled service from Firestore
+        await _firestore
+            .collection('service_schedules')
+            .doc(serviceId)
+            .delete();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Service canceled successfully.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error canceling service: $e')),
+      );
+    }
+  }
+
+  // Logout confirmation dialog
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -9,49 +185,85 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Home"),
         actions: [
+          // Notification icon with a red dot for new notifications
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                color: Colors.black,
+                onPressed: () {
+                  _checkForNotifications(context);
+                },
+              ),
+              if (hasNewNotifications)
+                Positioned(
+                  right: 10,
+                  top: 15,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          // Logout button
           IconButton(
             icon: const Icon(Icons.logout),
+            color: Colors.black,
             onPressed: () {
-              // Handle logout action (e.g., navigating back to LoginPage)
-              Navigator.pop(context);
+              _showLogoutConfirmationDialog(context);
             },
           ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 40.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome message or user information
+            // Welcome message
             Text(
               'Welcome to Sri Sai Ganesh Marketing!',
-              style: Theme.of(context).textTheme.headlineMedium,
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade800,
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 40),
 
-            // Quick Actions or Key Functionalities
+            // Quick Actions or Key Functionalities (Service Request, Products)
             Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _buildFeatureCard(
-                    context: context,
-                    icon: Icons.build_circle_outlined,
-                    label: 'Request Service',
-                    onTap: () {
-                      Navigator.pushNamed(context, '/services');
-                    },
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.8,
+                    child: _buildFeatureCard(
+                      context: context,
+                      icon: Icons.local_offer_outlined,
+                      label: 'Our Products',
+                      onTap: () {
+                        Navigator.pushNamed(context, '/products');
+                      },
+                    ),
                   ),
-                  _buildFeatureCard(
-                    context: context,
-                    icon: Icons.local_offer_outlined,
-                    label: 'Our Products',
-                    onTap: () {
-                      Navigator.pushNamed(context, '/products');
-                    },
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.8,
+                    child: _buildFeatureCard(
+                      context: context,
+                      icon: Icons.build_circle_outlined,
+                      label: 'Request Service',
+                      onTap: () {
+                        Navigator.pushNamed(context, '/services');
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -59,43 +271,29 @@ class HomePage extends StatelessWidget {
 
             // Footer with home, profile, and bookings icons
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.only(top: 20.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.home,
-                      color: Colors.blue.shade800, // Navy Blue color
-                    ),
+                  _buildFooterIcon(
+                    icon: Icons.home,
                     onPressed: () {
-                      // Navigate to Home
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Already on Home Page!')),
                       );
                     },
                   ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.person,
-                      color: Colors.blue.shade800, // Navy Blue color
-                    ),
+                  _buildFooterIcon(
+                    icon: Icons.person,
                     onPressed: () {
-                      // Navigate to ProfilePage
                       Navigator.pushNamed(context, '/profile');
                     },
                   ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.book,
-                      color: Colors.blue.shade800, // Navy Blue color
-                    ),
+                  _buildFooterIcon(
+                    icon: Icons.book,
                     onPressed: () {
-                      // Placeholder: Navigate to My Bookings
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Bookings Page Coming Soon!')),
-                      );
+                      Navigator.pushNamed(
+                          context, '/bookings'); // Navigate to Bookings page
                     },
                   ),
                 ],
@@ -107,6 +305,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  // Create the feature card for actions (Request Service, Our Products)
   Widget _buildFeatureCard({
     required BuildContext context,
     required IconData icon,
@@ -116,25 +315,54 @@ class HomePage extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 90,
-              color: Colors.blue.shade800, // Navy Blue color
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade50, Colors.blue.shade100],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 80,
+                color: Colors.blue.shade800,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  // Footer icon with padding and increased size for better tap area
+  Widget _buildFooterIcon({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      icon: Icon(
+        icon,
+        size: 30,
+        color: Colors.blue.shade800,
+      ),
+      onPressed: onPressed,
     );
   }
 }
