@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '/auth/loginscreen.dart';
+import 'auth/loginscreen.dart';
+import 'screens/products_page.dart';
+import 'screens/services_page.dart';
+import 'screens/profile_page.dart';
+import 'screens/homepage.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 Future<void> main() async {
@@ -23,6 +27,14 @@ class MyApp extends StatelessWidget {
           useMaterial3: true, // Optional for Material 3 style
         ),
         debugShowCheckedModeBanner: false,
-        home: LoginScreen());
+      initialRoute: '/', // Set initial route
+      routes: {
+        '/': (context) => const LoginScreen(), // Login Page
+        '/home':(context) => const HomePage(),
+        '/products': (context) => const ProductsPage(), // Products Page
+        '/services': (context) => ServicePage(), // Services Page
+        '/profile': (context) => const ProfilePage(),
+      },
+    );
   }
 }
