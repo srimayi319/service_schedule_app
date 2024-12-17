@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
-
 class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
 
@@ -14,10 +12,13 @@ class BookingsPage extends StatefulWidget {
 class _BookingsPageState extends State<BookingsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Fetching services from Firestore
-  Future<List<Map<String, dynamic>>> _getServices() async {
+  // Fetching completed services from Firestore
+  Future<List<Map<String, dynamic>>> _getCompletedServices() async {
     final snapshot = await _firestore.collection('service_schedules').get();
-    return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+    return snapshot.docs
+        .map((doc) => doc.data() as Map<String, dynamic>)
+        .where((service) => service['status'] == 'completed')
+        .toList();
   }
 
   // Showing feedback form for a completed service
@@ -34,13 +35,14 @@ class _BookingsPageState extends State<BookingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Rating selection (you can use a widget like star_rating or a slider)
+              // Rating selection
               Text('Rating: $rating'),
               Slider(
                 min: 1,
                 max: 5,
                 value: rating.toDouble(),
                 divisions: 4,
+                label: rating.toString(),
                 onChanged: (value) {
                   setState(() {
                     rating = value.toInt();
@@ -74,6 +76,7 @@ class _BookingsPageState extends State<BookingsPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Feedback submitted successfully!')),
                 );
+                setState(() {}); // Refresh the UI
               },
               child: const Text('Submit Feedback'),
             ),
@@ -90,7 +93,7 @@ class _BookingsPageState extends State<BookingsPage> {
         title: const Text("My Services"),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _getServices(),
+        future: _getCompletedServices(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -100,11 +103,7 @@ class _BookingsPageState extends State<BookingsPage> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          final services = snapshot.data ?? [];
-
-          // Separate pending and completed services
-          final pendingServices = services.where((service) => service['status'] == 'pending').toList();
-          final completedServices = services.where((service) => service['status'] == 'completed').toList();
+          final completedServices = snapshot.data ?? [];
 
           return SingleChildScrollView(
             child: Padding(
@@ -112,28 +111,6 @@ class _BookingsPageState extends State<BookingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Pending Services Section
-                  const Text(
-                    'Pending Services',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  if (pendingServices.isEmpty)
-                    const Text('No pending services.')
-                  else
-                    ...pendingServices.map((service) {
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        child: ListTile(
-                          title: Text('Service scheduled for: ${service['date']}'),
-                          subtitle: Text('Status: ${service['status']}'),
-                        ),
-                      );
-                    }).toList(),
-
-                  const SizedBox(height: 20),
-
-                  // Completed Services Section
                   const Text(
                     'Completed Services',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
