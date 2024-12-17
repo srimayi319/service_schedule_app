@@ -199,36 +199,96 @@ class _ServicePageState extends State<ServicePage> {
               ),
 
               // Display scheduled services using StreamBuilder
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('scheduled_services')
-                    .orderBy('timestamp', descending: true) // Order by timestamp for latest services
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  } else if (snapshot.hasData) {
-                    final servicesList = snapshot.data!.docs;
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: servicesList.length,
-                      itemBuilder: (context, index) {
-                        final service = servicesList[index];
-                        return ListTile(
-                          title: Text(service['service']),
-                          subtitle: Text(
-                            'Scheduled on: ${DateFormat('yyyy-MM-dd').format(DateTime.parse(service['date']))} at ${service['time']}',
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('scheduled_services')
+                .orderBy('timestamp', descending: true) // Order by timestamp for latest services
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              } else if (snapshot.hasData) {
+                final servicesList = snapshot.data!.docs;
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: servicesList.length,
+                  itemBuilder: (context, index) {
+                    final service = servicesList[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                      elevation: 2,
+                      child: ListTile(
+                        title: Text(
+                          service['service'],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          'Scheduled on: ${DateFormat('yyyy-MM-dd').format(DateTime.parse(service['date']))} at ${service['time']}',
+                        ),
+                        trailing: ElevatedButton.icon(
+                          icon: const Icon(Icons.cancel, color: Colors.white),
+                          label: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.white),
                           ),
-                        );
-                      },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                          ),
+                          onPressed: () async {
+                            // Confirm cancellation with the user
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Cancel Service'),
+                                content: const Text(
+                                  'Are you sure you want to cancel this service?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('No'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('Yes'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            // Proceed with cancellation if confirmed
+                            if (confirm == true) {
+                              try {
+                                await FirebaseFirestore.instance
+                                    .collection('scheduled_services')
+                                    .doc(service.id)
+                                    .delete();
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Service Cancelled!')),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error canceling service: $e')),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ),
                     );
-                  } else {
-                    return const Center(child: Text('No scheduled services.'));
-                  }
-                },
-              ),
+                  },
+                );
+              } else {
+                return const Center(child: Text('No scheduled services.'));
+              }
+            },
+          ),
             ],
           ),
         ),
