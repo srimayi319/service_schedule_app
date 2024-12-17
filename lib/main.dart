@@ -2,9 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'auth/loginscreen.dart';
 import 'screens/products_page.dart';
-
 import 'screens/bookings.dart';
-
 import 'screens/services_page.dart';
 import 'screens/profile_page.dart';
 import 'screens/homepage.dart';
@@ -38,8 +36,7 @@ class MyApp extends StatelessWidget {
         '/products': (context) => const ProductsPage(), // Products Page
         '/services': (context) => ServicePage(), // Services Page
         '/profile': (context) => const ProfilePage(),
-        '/bookings':(context)=>  BookingsPage(),
-
+        '/bookings':(context)=> const BookingsPage(),
       },
     );
   }
