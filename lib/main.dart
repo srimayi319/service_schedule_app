@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'auth/loginscreen.dart';
 import 'screens/products_page.dart';
+<<<<<<< HEAD
 import 'screens/bookings.dart';
+=======
+>>>>>>> 7e7a1588f28d6bbd326a7f6722517dc63b1e5b4e
 import 'screens/services_page.dart';
 import 'screens/profile_page.dart';
 import 'screens/homepage.dart';
@@ -31,11 +34,18 @@ class MyApp extends StatelessWidget {
       initialRoute: '/', // Set initial route
       routes: {
         '/': (context) => const LoginScreen(), // Login Page
+<<<<<<< HEAD
         '/home':(context) =>  HomePage(),
         '/products': (context) => const ProductsPage(), // Products Page
         '/services': (context) => ServicePage(), // Services Page
         '/profile': (context) => const ProfilePage(),
         '/bookings':(context)=> const BookingsPage(),
+=======
+        '/home':(context) => const HomePage(),
+        '/products': (context) => const ProductsPage(), // Products Page
+        '/services': (context) => ServicePage(), // Services Page
+        '/profile': (context) => const ProfilePage(),
+>>>>>>> 7e7a1588f28d6bbd326a7f6722517dc63b1e5b4e
       },
     );
   }
