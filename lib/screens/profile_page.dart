@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -8,7 +9,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // Define controllers for the form fields
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -17,11 +17,36 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Initialize the form fields with some default values or saved user data
     _nameController.text = 'John Doe';
     _addressController.text = '123 Main Street, City';
     _phoneController.text = '+1 234 567 890';
     _emailController.text = 'johndoe@example.com';
+  }
+
+  // Method to save profile details to Firestore
+  Future<void> _saveProfile() async {
+    try {
+      // Get reference to the Firestore collection
+      final userCollection = FirebaseFirestore.instance.collection('users');
+
+      // Add a new document with a unique ID
+      await userCollection.add({
+        'name': _nameController.text,
+        'address': _addressController.text,
+        'phone': _phoneController.text,
+        'email': _emailController.text,
+      });
+
+      // Show a success message after saving
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile Updated!')),
+      );
+    } catch (e) {
+      // Show error message in case of failure
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update profile.')),
+      );
+    }
   }
 
   @override
@@ -40,7 +65,6 @@ class _ProfilePageState extends State<ProfilePage> {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 20),
-            // Profile Form
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
@@ -76,13 +100,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                // Save user profile details
-                // This is where you would add logic to save data, e.g., to a database or API
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile Updated!')),
-                );
-              },
+              onPressed: _saveProfile, // Call the method to save the profile data
               child: const Text('Save Changes'),
             ),
           ],
