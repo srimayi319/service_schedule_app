@@ -24,6 +24,13 @@ class ProductsPage extends StatelessWidget {
             description: 'Compact design with UV technology.',
             price: '₹8,499',
           ),
+          ProductItem(
+            imageUrl: 'assets/images/filter2.jpg',  // Replace with your image path
+            productName: 'AquaGrand',
+            description: 'Compact design with UV technology.',
+            price: '₹8,499',
+          )
+          // Add more ProductItems as needed
         ],
       ),
     );
