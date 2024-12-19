@@ -5,8 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomePage extends StatefulWidget {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-   HomePage({super.key});
 
+  HomePage({super.key});
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -36,7 +36,7 @@ class _HomePageState extends State<HomePage> {
           return {
             'id': doc.id,
             'date': data['date'] as Timestamp,
-            'serviceName': data['serviceName'] as String,
+            'service': data['service'] as String,
           };
         }).toList();
 
@@ -59,7 +59,7 @@ class _HomePageState extends State<HomePage> {
     try {
       // Fetch scheduled services from Firestore
       final querySnapshot = await FirebaseFirestore.instance
-          .collection('service_schedules')
+          .collection('scheduled_services')
           .where('date',
           isGreaterThanOrEqualTo: DateTime.now().toIso8601String())
           .orderBy('date')
@@ -71,12 +71,11 @@ class _HomePageState extends State<HomePage> {
         return {
           'id': doc.id,
           'date': DateTime.parse(data['date']),
-          'serviceName': data['serviceName'],
+          'service': data['service'],
         };
       }).toList();
 
       if (notifications.isNotEmpty) {
-        // Show notification dialog with the fetched services
         _showNotificationDialog(context, notifications);
       } else {
         // Show no upcoming services message
@@ -105,15 +104,9 @@ class _HomePageState extends State<HomePage> {
             children: [
               for (var notification in notifications)
                 ListTile(
-                  title: Text('Service: ${notification['serviceName']}'),
+                  title: Text('Service: ${notification['service']}'),
                   subtitle: Text('Scheduled on: ${DateFormat('yyyy-MM-dd').format(notification['date'])}'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.cancel, color: Colors.red),
-                    onPressed: () {
-                      _cancelService(notification['id']);
-                      Navigator.of(context).pop(); // Close the dialog
-                    },
-                  ),
+
                 ),
             ],
           ),
@@ -131,25 +124,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Function to cancel the scheduled service
-  Future<void> _cancelService(String serviceId) async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        // Delete the scheduled service from Firestore
-        await _firestore
-            .collection('service_schedules')
-            .doc(serviceId)
-            .delete();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Service canceled successfully.')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error canceling service: $e')),
-      );
-    }
-  }
+
 
   // Logout confirmation dialog
   void _showLogoutConfirmationDialog(BuildContext context) {
@@ -220,88 +195,101 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 40.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome message
-            Text(
-              'Welcome to Sri Sai Ganesh Marketing!',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue.shade800,
-              ),
-            ),
-            const SizedBox(height: 40),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 40.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Welcome message
+                Text(
+                  'Welcome to Sri Sai Ganesh Marketing!',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+                const SizedBox(height: 60),
 
-            // Quick Actions or Key Functionalities (Service Request, Products)
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    child: _buildFeatureCard(
-                      context: context,
-                      icon: Icons.local_offer_outlined,
-                      label: 'Our Products',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/products');
-                      },
+                // Quick Actions or Key Functionalities (Service Request, Products)
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      child: _buildFeatureCard(
+                        context: context,
+                        icon: Icons.local_offer_outlined,
+                        label: 'Our Products',
+                        onTap: () {
+                          Navigator.pushNamed(context, '/products');
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    child: _buildFeatureCard(
-                      context: context,
-                      icon: Icons.build_circle_outlined,
-                      label: 'Request Service',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/services');
-                      },
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      child: _buildFeatureCard(
+                        context: context,
+                        icon: Icons.build_circle_outlined,
+                        label: 'Request Service',
+                        onTap: () {
+                          Navigator.pushNamed(context, '/services');
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
+                    const SizedBox(height: 16),
+                    // Firestore Viewer Button
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      child: _buildFeatureCard(
+                        context: context,
+                        icon: Icons.view_list,
+                        label: 'View Firestore Data',
+                        onTap: () {
+                          Navigator.pushNamed(context, '/firestore');
+                        },
+                      ),
+                    ),
+                  ],
+                ),
 
-            // Footer with home, profile, and bookings icons
-            Padding(
-              padding: const EdgeInsets.only(top: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildFooterIcon(
-                    icon: Icons.home,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Already on Home Page!')),
-                      );
-                    },
+                // Footer with home, profile, and bookings icons
+                Padding(
+                  padding: const EdgeInsets.only(top: 100.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildFooterIcon(
+                        icon: Icons.home,
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Already on Home Page!')),
+                          );
+                        },
+                      ),
+                      _buildFooterIcon(
+                        icon: Icons.person,
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/profile');
+                        },
+                      ),
+                      _buildFooterIcon(
+                        icon: Icons.book,
+                        onPressed: () {
+                          Navigator.pushNamed(
+                              context, '/bookings'); // Navigate to Bookings page
+                        },
+                      ),
+                    ],
                   ),
-                  _buildFooterIcon(
-                    icon: Icons.person,
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/profile');
-                    },
-                  ),
-                  _buildFooterIcon(
-                    icon: Icons.book,
-                    onPressed: () {
-                      Navigator.pushNamed(
-                          context, '/bookings'); // Navigate to Bookings page
-                    },
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
     );
   }
 
@@ -357,12 +345,9 @@ class _HomePageState extends State<HomePage> {
     required VoidCallback onPressed,
   }) {
     return IconButton(
-      icon: Icon(
-        icon,
-        size: 30,
-        color: Colors.blue.shade800,
-      ),
+      icon: Icon(icon, size: 32),
       onPressed: onPressed,
+      padding: const EdgeInsets.all(16.0),
     );
   }
 }
